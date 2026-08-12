@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Joey — PPL Split</title>
+<style>
+  :root{
+    --bg:#14171c; --surface:#1d2128; --surface2:#232832; --line:#2b313a;
+    --text:#e9ebee; --muted:#8b929e; --accent:#ffb020; --done:#3ecf6a;
+    --radius:12px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; background:var(--bg); color:var(--text);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:16px; line-height:1.35;}
+  body{padding:0 0 40px; max-width:520px; margin:0 auto;}
+  .num{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-variant-numeric:tabular-nums;}
+
+  header{padding:18px 16px 12px; position:sticky; top:0; background:var(--bg); z-index:5;
+    border-bottom:1px solid var(--line);}
+  .title{display:flex; align-items:baseline; gap:8px;}
+  .title h1{margin:0; font-size:20px; letter-spacing:.02em; font-weight:800;}
+  .title .tag{font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+    color:#14171c; background:var(--accent); padding:3px 7px; border-radius:5px;}
+  .warm{margin-top:8px; font-size:12.5px; color:var(--muted);}
+  .warm b{color:var(--text); font-weight:700;}
+
+  .tabs{display:flex; gap:6px; padding:12px 16px 0; position:sticky; top:73px; background:var(--bg); z-index:4;}
+  .tab{flex:1; border:1px solid var(--line); background:var(--surface); color:var(--muted);
+    padding:11px 6px; border-radius:10px 10px 0 0; font-size:13px; font-weight:700; text-align:center;
+    cursor:pointer; letter-spacing:.02em;}
+  .tab .d{display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:2px;}
+  .tab.active{color:var(--text); border-color:var(--accent); border-bottom-color:var(--surface); background:var(--surface2);}
+  .tab.active .d{color:var(--accent);}
+
+  .panel{display:none; padding:0 16px;}
+  .panel.active{display:block;}
+
+  .ex{display:flex; align-items:flex-start; gap:12px; padding:13px 12px; margin-top:10px;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); cursor:pointer;
+    transition:background .12s,border-color .12s,opacity .12s;}
+  .ex:active{background:var(--surface2);}
+  .ex.done{opacity:.5; border-color:var(--done);}
+  .chk{flex:none; width:22px; height:22px; border-radius:6px; border:2px solid var(--line);
+    margin-top:1px; display:flex; align-items:center; justify-content:center; font-size:14px; color:transparent;}
+  .ex.done .chk{background:var(--done); border-color:var(--done); color:#0e1712;}
+  .body{flex:1; min-width:0;}
+  .name{font-size:15px; font-weight:700; line-height:1.25;}
+  .name a{color:var(--text); text-decoration:none; border-bottom:1px dotted var(--muted);}
+  .name a:active{color:var(--accent);}
+  .ex.done .name{text-decoration:line-through; text-decoration-color:var(--muted);}
+  .meta{margin-top:5px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;}
+  .mg{font-size:11px; font-weight:700; letter-spacing:.03em; color:var(--accent);
+    background:rgba(255,176,32,.1); padding:2px 7px; border-radius:20px;}
+  .sr{font-size:12.5px; color:var(--muted);}
+  .sr b{color:var(--text); font-weight:700;}
+  .t{flex:none; text-align:right; font-size:12px; color:var(--muted); margin-top:1px;}
+  .t .n{display:block; font-size:15px; font-weight:800; color:var(--text);}
+
+  .foot{margin:14px 0 4px; padding:14px 14px; background:var(--surface2); border:1px solid var(--line);
+    border-radius:var(--radius); display:flex; justify-content:space-between; align-items:center;}
+  .foot .lbl{font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:700;}
+  .foot .val{font-size:22px; font-weight:800;}
+  .foot .val small{font-size:12px; color:var(--muted); font-weight:600;}
+  .note{font-size:11.5px; color:var(--muted); text-align:center; padding:14px 20px 0; line-height:1.5;}
+  .reset{display:block; margin:16px auto 0; background:none; border:1px solid var(--line); color:var(--muted);
+    font-size:12px; padding:8px 16px; border-radius:20px; cursor:pointer;}
+  .reset:active{color:var(--text); border-color:var(--muted);}
+</style>
+</head>
+<body>
+<header>
+  <div class="title"><h1>Push / Pull / Legs</h1><span class="tag">24HR</span></div>
+  <div class="warm"><b>Warmup first:</b> 5–10 min cardio, then 1–2 ramp sets on the first big lift. Tap a row to check it off. Tap the name for a form video.</div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-day="0"><span class="d">Day 1</span>Push</button>
+  <button class="tab" data-day="1"><span class="d">Day 2</span>Pull</button>
+  <button class="tab" data-day="2"><span class="d">Day 3</span>Legs</button>
+</div>
+
+<div id="app"></div>
+
+<div class="note">Times = working time (sets + rest + setup). Add 5–10 min warmup on top. Budget ~45–50 min per session.</div>
+
+<script>
+const DAYS = [
+  { name:"Push", total:38, ex:[
+    {n:"Incline chest press machine", mg:"Upper chest", sr:"3–4 × 8–12", t:8, q:"incline+chest+press+machine+exercise"},
+    {n:"Cable fly (mid)", mg:"Mid chest", sr:"3 × 12–15", t:5, q:"cable+chest+fly+exercise"},
+    {n:"Cable lower chest fly (high-to-low)", mg:"Lower chest", sr:"3 × 12–15", t:5, q:"high+to+low+cable+fly+lower+chest"},
+    {n:"Arnold press", mg:"Front/side delts", sr:"3 × 8–10, ramp from 20 lb", t:6, q:"arnold+press+dumbbell+exercise"},
+    {n:"Lateral raise", mg:"Side delts", sr:"3 × 15", t:4, q:"dumbbell+lateral+raise+exercise"},
+    {n:"Tricep pushdown (cheater bar)", mg:"Triceps", sr:"3 × 10–12", t:5, q:"tricep+pushdown+straight+bar+cable"},
+    {n:"Rope pushdown", mg:"Triceps", sr:"3 × 12–15", t:5, q:"rope+tricep+pushdown+exercise"},
+  ]},
+  { name:"Pull", total:28, ex:[
+    {n:"Seated wide-grip cable pulldown", mg:"Lats/upper back", sr:"3–4 × 8–12 @ 100 lb", t:8, q:"wide+grip+lat+pulldown+exercise"},
+    {n:"Seated cable row (V-handle)", mg:"Mid back", sr:"3 × 10–12 @ 115 lb", t:6, q:"seated+cable+row+v+handle+exercise"},
+    {n:"Face pull / rear-delt fly", mg:"Rear delts", sr:"3 × 15", t:4, q:"cable+face+pull+exercise"},
+    {n:"EZ-bar curl (bent bar)", mg:"Biceps", sr:"3 × 10–12", t:5, q:"ez+bar+curl+exercise"},
+    {n:"Alternating hammer curls", mg:"Biceps/forearms", sr:"3 × 10/arm @ 20 lb", t:5, q:"alternating+dumbbell+hammer+curl"},
+  ]},
+  { name:"Legs", total:36, ex:[
+    {n:"Leg press", mg:"Quads/glutes", sr:"3–4 × 10–12", t:9, q:"leg+press+machine+exercise"},
+    {n:"Leg extension", mg:"Quads", sr:"3 × 12–15", t:5, q:"leg+extension+machine+exercise"},
+    {n:"Seated / lying leg curl", mg:"Hamstrings", sr:"3 × 10–12", t:5, q:"seated+leg+curl+machine+exercise"},
+    {n:"Romanian deadlift", mg:"Hams/glutes", sr:"3 × 8–10", t:6, q:"romanian+deadlift+exercise"},
+    {n:"Walking lunge / Bulgarian split squat", mg:"Quads/glutes", sr:"2–3 × 10/leg", t:6, q:"bulgarian+split+squat+exercise"},
+    {n:"Calf raise", mg:"Calves", sr:"3–4 × 12–20", t:5, q:"standing+calf+raise+machine"},
+  ]},
+];
+
+const STORAGE_KEY = "ppl-done";
+function loadDone(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[[],[],[]]");
+    return raw.map(arr => new Set(arr));
+  }catch(e){
+    return [new Set(), new Set(), new Set()];
+  }
+}
+function saveDone(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(done.map(s => [...s])));
+}
+
+const done = loadDone();
+let active = 0;
+const app = document.getElementById("app");
+
+function render(){
+  app.innerHTML = "";
+  DAYS.forEach((day, di) => {
+    const panel = document.createElement("div");
+    panel.className = "panel" + (di===active ? " active" : "");
+    day.ex.forEach((e, ei) => {
+      const isDone = done[di].has(ei);
+      const row = document.createElement("div");
+      row.className = "ex" + (isDone ? " done" : "");
+      row.innerHTML = `
+        <div class="chk">✓</div>
+        <div class="body">
+          <div class="name"><a href="https://www.google.com/search?q=${e.q}" target="_blank" rel="noopener">${e.n}</a></div>
+          <div class="meta"><span class="mg">${e.mg}</span><span class="sr num">${e.sr}</span></div>
+        </div>
+        <div class="t">min<span class="n num">${e.t}</span></div>`;
+      row.addEventListener("click", (ev) => {
+        if (ev.target.tagName === "A") return;
+        if (done[di].has(ei)) done[di].delete(ei); else done[di].add(ei);
+        saveDone();
+        render();
+      });
+      panel.appendChild(row);
+    });
+    const foot = document.createElement("div");
+    foot.className = "foot";
+    const remaining = day.ex.filter((_,ei)=>!done[di].has(ei)).reduce((s,e)=>s+e.t,0);
+    foot.innerHTML = `
+      <span class="lbl">${day.name} total</span>
+      <span class="val num">~${day.total}<small> min · ${remaining} left</small></span>`;
+    panel.appendChild(foot);
+    const reset = document.createElement("button");
+    reset.className = "reset";
+    reset.textContent = "Reset checkmarks";
+    reset.addEventListener("click", ()=>{ done[di].clear(); saveDone(); render(); });
+    panel.appendChild(reset);
+    app.appendChild(panel);
+  });
+}
+
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    active = +tab.dataset.day;
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    render();
+  });
+});
+
+render();
+</script>
+</body>
+</html>
