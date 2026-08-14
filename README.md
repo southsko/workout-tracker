@@ -7,9 +7,12 @@ Joey's personal fitness/health toolkit. Static site, served by [SWAG](https://gi
 
 **Pages:**
 - `/` — landing page, links to everything below
+- `/workout3.0/` — cloud-synced tracker: Google sign-in, weight history log,
+  chart, CSV export (backend: [`fit-api`](https://github.com/southsko/fit-api))
+- `/workout3.0/history.html` — weight history table + Chart.js graph + export
+- `/workout2.0/` — editable tracker (local-only): add/remove exercises and
+  days, reorder, copy exercises between days, per-exercise weight tracking
 - `/workout/` — Push/Pull/Legs tracker (classic, read-only split)
-- `/workout2.0/` — editable tracker: add/remove exercises and days, reorder,
-  copy exercises between days, per-exercise weight tracking
 - `/labs/` — Dirt Cheap Labs bloodwork panels + pricing comparison
 - `/protocols/` — peptide dosing references and write-ups
 
@@ -67,3 +70,57 @@ Files are copied/edited directly on the host; no build step.
   peptide cheat sheet, peptidedosages.com, researchdosing.com. Linked from
   the landing page.
 - **GitHub repo** — published to `southsko/fit.sofaking.rocks` (private).
+
+### 2026-08-14
+
+#### Added
+
+- **Workout Tracker 3.0** (`/workout3.0/`) — forked from 2.0, adds:
+  - Google sign-in (Google Identity Services) — any Google account, backend
+    verifies the ID token and issues a signed session cookie
+  - Cloud sync — plan (`days`/`exercises`/`checked`) persisted server-side
+    per account instead of `localStorage`; falls back to local storage when
+    signed out
+  - "Import local" control — one-click, confirms before replacing your cloud
+    plan with whatever plan is saved on the current device/browser; also
+    logs every weight on that plan into history
+  - Automatic weight history logging — every weight edit upserts a
+    `(date, exercise)` row server-side, so retyping the same day updates one
+    row instead of duplicating
+  - PWA manifest for "Add to Home Screen" (`manifest.json`, `icon.svg`)
+- **History page** (`/workout3.0/history.html`) — table of logged weights,
+  per-exercise filter, CSV export, and a Chart.js line chart (auto-selects
+  the most-logged exercise on load)
+- **`fit-api` backend** — new service, separate repo
+  ([`southsko/fit-api`](https://github.com/southsko/fit-api)): Python
+  FastAPI + SQLite, Docker container `fit-api` on the shared `proxy` network,
+  reverse-proxied at `fit.sofaking.rocks/api/*` via a `location /api/` block
+  added to `fit.sofaking.rocks.subdomain.conf`.
+- **Landing page** — consolidated the three workout-tracker cards into one
+  ("Workout Tracker 3.0" as the primary tap target), with a small
+  "Old versions: 2.0 · classic" line inside the same card instead of two
+  separate cards.
+
+#### Fixed
+
+- Import/dismiss controls on the plan-import banner were silently inert —
+  `bar.hidden = true` was overridden by an unconditional `display:flex` rule
+  on the same class (classic `[hidden]`-vs-CSS-specificity gotcha).
+- An early caching service worker made the page appear permanently stuck on
+  stale content; replaced with a network-first strategy, then removed
+  entirely in favor of a one-time "kill switch" script (self-unregisters,
+  clears its own cache) once it was clear the added complexity wasn't
+  earning its keep.
+- Cloudflare (in front of the whole domain) was edge-caching
+  `service-worker.js` for 4 hours regardless of origin headers — the actual
+  root cause of "hard refresh fixes it, normal refresh doesn't." Added an
+  explicit `no-cache` header for that file at the nginx layer and purged the
+  edge cache.
+- `/api/*` requests 404'd/500'd through two rounds of nginx `proxy_pass`
+  gotchas — variable-based `proxy_pass` doesn't strip the location prefix
+  like a static one does, and a `rewrite ... break;` silently skips any
+  `set` directives written after it in the same location block. Settled on
+  giving the FastAPI routes an `/api` prefix instead of fighting nginx.
+- History chart never rendered by default (only appeared after manually
+  picking an exercise from an empty-by-default dropdown); now auto-selects
+  the most-logged exercise on page load.

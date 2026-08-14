@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Joey — Workout 3.0</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14171c">
+<style>
+  :root{
+    --bg:#14171c; --surface:#1d2128; --surface2:#232832; --line:#2b313a;
+    --text:#e9ebee; --muted:#8b929e; --accent:#ffb020; --done:#3ecf6a; --danger:#e5484d;
+    --radius:12px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; background:var(--bg); color:var(--text);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:16px; line-height:1.35;}
+  body{padding:0 0 40px; max-width:560px; margin:0 auto;}
+  .num{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-variant-numeric:tabular-nums;}
+  a.back{color:var(--muted); text-decoration:none; font-size:.8rem;}
+
+  header{padding:14px 16px 12px; position:sticky; top:0; background:var(--bg); z-index:5;
+    border-bottom:1px solid var(--line);}
+  .hdrtop{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .navlink{color:var(--accent); text-decoration:none; font-size:11.5px; font-weight:700;}
+  .authwidget{display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--muted);}
+  .authwidget .who{max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .authwidget button{background:none; border:1px solid var(--line); color:var(--muted); font-size:11px;
+    padding:5px 9px; border-radius:20px; cursor:pointer;}
+  .authwidget button:active{color:var(--text); border-color:var(--muted);}
+  .title{display:flex; align-items:baseline; gap:8px; margin-top:6px;}
+  .title h1{margin:0; font-size:20px; letter-spacing:.02em; font-weight:800;}
+  .title .tag{font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+    color:#14171c; background:var(--accent); padding:3px 7px; border-radius:5px;}
+  .warm{margin-top:8px; font-size:12.5px; color:var(--muted);}
+  .warm b{color:var(--text); font-weight:700;}
+
+  .importbar{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:10px 16px 0; padding:10px 12px;
+    background:rgba(255,176,32,.08); border:1px solid var(--accent); border-radius:10px; font-size:12.5px; color:var(--text);}
+  .importbar[hidden]{display:none;}
+  .importbar .btn{flex:none; padding:6px 12px; font-size:12px;}
+
+  .tabs{display:flex; gap:6px; padding:12px 16px 0; position:sticky; top:88px; background:var(--bg); z-index:4;
+    overflow-x:auto;}
+  .tab{flex:0 0 auto; min-width:88px; border:1px solid var(--line); background:var(--surface); color:var(--muted);
+    padding:11px 10px; border-radius:10px 10px 0 0; font-size:13px; font-weight:700; text-align:center;
+    cursor:pointer; letter-spacing:.02em; position:relative;}
+  .tab .d{display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:2px;}
+  .tab.active{color:var(--text); border-color:var(--accent); border-bottom-color:var(--surface); background:var(--surface2);}
+  .tab.active .d{color:var(--accent);}
+  .tab .x{position:absolute; top:2px; right:5px; font-size:11px; color:var(--muted);}
+  .tab .x:active{color:var(--danger);}
+  .tab.add{border-style:dashed; color:var(--accent); min-width:64px;}
+
+  .panel{display:none; padding:0 16px;}
+  .panel.active{display:block;}
+
+  .ex{display:flex; align-items:flex-start; gap:10px; padding:13px 12px; margin-top:10px;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); cursor:pointer;
+    transition:background .12s,border-color .12s,opacity .12s;}
+  .ex:active{background:var(--surface2);}
+  .ex.done{opacity:.5; border-color:var(--done);}
+  .chk{flex:none; width:22px; height:22px; border-radius:6px; border:2px solid var(--line);
+    margin-top:1px; display:flex; align-items:center; justify-content:center; font-size:14px; color:transparent;}
+  .ex.done .chk{background:var(--done); border-color:var(--done); color:#0e1712;}
+  .body{flex:1; min-width:0;}
+  .name{font-size:15px; font-weight:700; line-height:1.25;}
+  .name a{color:var(--text); text-decoration:none; border-bottom:1px dotted var(--muted);}
+  .name a:active{color:var(--accent);}
+  .ex.done .name{text-decoration:line-through; text-decoration-color:var(--muted);}
+  .meta{margin-top:5px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;}
+  .mg{font-size:11px; font-weight:700; letter-spacing:.03em; color:var(--accent);
+    background:rgba(255,176,32,.1); padding:2px 7px; border-radius:20px;}
+  .sr{font-size:12.5px; color:var(--muted);}
+  .wtwrap{display:inline-flex; align-items:center; gap:4px; background:var(--surface2);
+    border:1px solid var(--line); border-radius:20px; padding:1px 4px 1px 9px;}
+  .wtwrap .wtlabel{font-size:10px; color:var(--muted); letter-spacing:.04em; text-transform:uppercase;}
+  .wt{width:44px; background:none; border:none; color:var(--text); font-size:12.5px; font-weight:700;
+    text-align:right; padding:3px 0; font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+  .wt:focus{outline:none;}
+  .wtwrap .wtunit{font-size:10.5px; color:var(--muted); padding-right:5px;}
+  .t{flex:none; text-align:right; font-size:12px; color:var(--muted); margin-top:1px;}
+  .t .n{display:block; font-size:15px; font-weight:800; color:var(--text);}
+  .rowbtns{flex:none; display:grid; grid-template-columns:repeat(2,26px); gap:6px; margin-left:2px;}
+  .iconbtn{background:none; border:1px solid var(--line); color:var(--muted); border-radius:6px;
+    width:26px; height:26px; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .iconbtn:active{color:var(--text); border-color:var(--muted);}
+  .iconbtn.danger:active{color:var(--danger); border-color:var(--danger);}
+  .iconbtn:disabled{opacity:.25; cursor:default;}
+  .iconbtn:disabled:active{color:var(--muted); border-color:var(--line);}
+
+  .addex{display:block; width:100%; margin-top:12px; background:var(--surface); border:1px dashed var(--line);
+    color:var(--accent); font-size:13.5px; font-weight:700; padding:12px; border-radius:var(--radius); cursor:pointer;}
+  .addex:active{background:var(--surface2);}
+
+  .foot{margin:14px 0 4px; padding:14px 14px; background:var(--surface2); border:1px solid var(--line);
+    border-radius:var(--radius); display:flex; justify-content:space-between; align-items:center;}
+  .foot .lbl{font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:700;}
+  .foot .val{font-size:22px; font-weight:800;}
+  .foot .val small{font-size:12px; color:var(--muted); font-weight:600;}
+  .note{font-size:11.5px; color:var(--muted); text-align:center; padding:14px 20px 0; line-height:1.5;}
+  .reset{display:block; margin:16px auto 0; background:none; border:1px solid var(--line); color:var(--muted);
+    font-size:12px; padding:8px 16px; border-radius:20px; cursor:pointer;}
+  .reset:active{color:var(--text); border-color:var(--muted);}
+  .empty{padding:24px 12px; text-align:center; color:var(--muted); font-size:13.5px;}
+
+  /* modal */
+  .overlay{position:fixed; inset:0; background:rgba(10,11,14,.7); display:flex; align-items:flex-end;
+    justify-content:center; z-index:20;}
+  .overlay.hidden{display:none;}
+  .modal{background:var(--surface); border:1px solid var(--line); border-radius:16px 16px 0 0;
+    width:100%; max-width:560px; max-height:85vh; overflow-y:auto; padding:18px 16px 24px;}
+  @media (min-width:600px){
+    .overlay{align-items:center;}
+    .modal{border-radius:16px; max-height:80vh;}
+  }
+  .modal h2{margin:0 0 12px; font-size:17px;}
+  .modal label{display:block; font-size:11.5px; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.08em; font-weight:700; margin:12px 0 5px;}
+  .modal input[type=text], .modal input[type=number], .modal select{
+    width:100%; background:var(--surface2); border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:10px 11px; font-size:14px;}
+  .modal .btnrow{display:flex; gap:8px; margin-top:16px;}
+  .btn{flex:1; border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:700; cursor:pointer;}
+  .btn.primary{background:var(--accent); color:#14171c;}
+  .btn.ghost{background:var(--surface2); color:var(--muted); border:1px solid var(--line);}
+  .chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .chip{border:1px solid var(--line); background:var(--surface2); color:var(--muted); font-size:12px;
+    font-weight:700; padding:6px 11px; border-radius:20px; cursor:pointer;}
+  .chip.active{background:var(--accent); color:#14171c; border-color:var(--accent);}
+  .cat-list{margin-top:12px; max-height:38vh; overflow-y:auto; border:1px solid var(--line); border-radius:10px;}
+  .cat-item{padding:11px 12px; border-bottom:1px solid var(--line); cursor:pointer; display:flex;
+    justify-content:space-between; align-items:center; gap:8px;}
+  .cat-item:last-child{border-bottom:none;}
+  .cat-item:active{background:var(--surface2);}
+  .cat-item .ci-name{font-size:13.5px; font-weight:600;}
+  .cat-item .ci-mg{font-size:10.5px; color:var(--muted); margin-top:2px;}
+  .cat-item .plus{color:var(--accent); font-weight:800; font-size:16px; flex:none;}
+  .toast{margin-top:10px; font-size:12px; color:var(--done); min-height:16px;}
+  .custom-box{margin-top:18px; padding-top:14px; border-top:1px solid var(--line);}
+  .custom-box summary{cursor:pointer; font-size:13px; color:var(--muted); font-weight:700;}
+  .copylist{margin-top:10px; display:flex; flex-direction:column; gap:8px;}
+  .copyrow{display:flex; align-items:center; gap:10px; background:var(--surface2); border:1px solid var(--line);
+    border-radius:8px; padding:10px 12px; font-size:13.5px;}
+  .copyrow input{width:18px; height:18px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="hdrtop">
+    <a class="back" href="/">← fit.sofaking.rocks</a>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <a class="navlink" href="history.html">History →</a>
+      <div class="authwidget" id="authWidget"></div>
+    </div>
+  </div>
+  <div class="title"><h1>Workout 3.0</h1><span class="tag">Cloud</span></div>
+  <div class="warm"><b>Tap</b> a row to check it off. Sign in with Google to sync across devices and log weight history automatically. <b>+ Add Exercise</b> to pull from the muscle-group catalog.</div>
+</header>
+
+<div class="importbar" id="importBar" hidden>
+  <span>Found a workout plan saved on this device.</span>
+  <button class="btn primary" id="importBtn">Import it</button>
+  <button class="btn ghost" id="dismissImportBtn">Dismiss</button>
+</div>
+
+<div class="tabs" id="tabs"></div>
+<div id="app"></div>
+
+<div class="note">Times = working time (sets + rest + setup). Add 5–10 min warmup on top. Signed in: synced to your account. Signed out: saved in this browser only.</div>
+
+<div class="overlay hidden" id="overlay">
+  <div class="modal" id="modalBody"></div>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+const GOOGLE_CLIENT_ID = "119940097847-6qletrqqv3hvc1330b4m9doacrlb0g2e.apps.googleusercontent.com";
+const LOCAL_KEY = "workout3-state-local";
+
+const GROUPS = ["Chest","Back","Shoulders","Biceps","Triceps","Quads","Hamstrings/Glutes","Calves","Core","Cardio"];
+
+const EXERCISE_CATALOG = [
+  // Chest
+  {n:"Flat barbell bench press", mg:"Chest", group:"Chest", sr:"3–4 × 6–10", t:8, q:"flat+barbell+bench+press+exercise"},
+  {n:"Incline barbell bench press", mg:"Upper chest", group:"Chest", sr:"3–4 × 8–10", t:8, q:"incline+barbell+bench+press+exercise"},
+  {n:"Decline bench press machine", mg:"Lower chest", group:"Chest", sr:"3 × 10–12", t:6, q:"decline+bench+press+machine+exercise"},
+  {n:"Chest press machine", mg:"Chest", group:"Chest", sr:"3–4 × 8–12", t:7, q:"chest+press+machine+exercise"},
+  {n:"Incline chest press machine", mg:"Upper chest", group:"Chest", sr:"3–4 × 8–12", t:8, q:"incline+chest+press+machine+exercise"},
+  {n:"Pec deck / chest fly machine", mg:"Chest", group:"Chest", sr:"3 × 12–15", t:5, q:"pec+deck+chest+fly+machine+exercise"},
+  {n:"Cable crossover (mid)", mg:"Mid chest", group:"Chest", sr:"3 × 12–15", t:5, q:"cable+chest+crossover+exercise"},
+  {n:"Cable fly (high-to-low)", mg:"Lower chest", group:"Chest", sr:"3 × 12–15", t:5, q:"high+to+low+cable+fly+lower+chest"},
+  {n:"Dumbbell bench press", mg:"Chest", group:"Chest", sr:"3–4 × 8–12", t:7, q:"dumbbell+bench+press+exercise"},
+  {n:"Dumbbell incline press", mg:"Upper chest", group:"Chest", sr:"3 × 8–12", t:7, q:"dumbbell+incline+press+exercise"},
+  {n:"Smith machine bench press", mg:"Chest", group:"Chest", sr:"3 × 8–12", t:7, q:"smith+machine+bench+press+exercise"},
+  {n:"Push-ups", mg:"Chest", group:"Chest", sr:"3 × max reps", t:4, q:"push+up+exercise"},
+  // Back
+  {n:"Wide-grip lat pulldown", mg:"Lats", group:"Back", sr:"3–4 × 8–12", t:8, q:"wide+grip+lat+pulldown+exercise"},
+  {n:"Close-grip lat pulldown", mg:"Lats", group:"Back", sr:"3 × 10–12", t:6, q:"close+grip+lat+pulldown+exercise"},
+  {n:"Seated cable row (V-handle)", mg:"Mid back", group:"Back", sr:"3 × 10–12", t:6, q:"seated+cable+row+v+handle+exercise"},
+  {n:"Seated cable row (wide bar)", mg:"Mid back", group:"Back", sr:"3 × 10–12", t:6, q:"seated+cable+row+wide+bar+exercise"},
+  {n:"T-bar row", mg:"Mid back", group:"Back", sr:"3 × 8–10", t:7, q:"t+bar+row+exercise"},
+  {n:"Chest-supported row machine", mg:"Mid back", group:"Back", sr:"3 × 10–12", t:6, q:"chest+supported+row+machine+exercise"},
+  {n:"Assisted pull-up/dip machine", mg:"Back", group:"Back", sr:"3 × 8–10", t:7, q:"assisted+pull+up+dip+machine+exercise"},
+  {n:"Pull-ups", mg:"Lats", group:"Back", sr:"3 × max reps", t:6, q:"pull+up+exercise"},
+  {n:"Straight-arm pulldown", mg:"Lats", group:"Back", sr:"3 × 12–15", t:5, q:"straight+arm+pulldown+cable+exercise"},
+  {n:"Back extension (hyperextension)", mg:"Lower back", group:"Back", sr:"3 × 12–15", t:5, q:"back+extension+hyperextension+exercise"},
+  {n:"One-arm dumbbell row", mg:"Mid back", group:"Back", sr:"3 × 10/arm", t:6, q:"one+arm+dumbbell+row+exercise"},
+  {n:"Cable high row", mg:"Upper back", group:"Back", sr:"3 × 10–12", t:6, q:"cable+high+row+exercise"},
+  // Shoulders
+  {n:"Shoulder press machine", mg:"Delts", group:"Shoulders", sr:"3–4 × 8–12", t:7, q:"shoulder+press+machine+exercise"},
+  {n:"Dumbbell shoulder press", mg:"Delts", group:"Shoulders", sr:"3 × 8–12", t:7, q:"dumbbell+shoulder+press+exercise"},
+  {n:"Arnold press", mg:"Front/side delts", group:"Shoulders", sr:"3 × 8–10", t:6, q:"arnold+press+dumbbell+exercise"},
+  {n:"Lateral raise (dumbbell)", mg:"Side delts", group:"Shoulders", sr:"3 × 15", t:4, q:"dumbbell+lateral+raise+exercise"},
+  {n:"Lateral raise machine", mg:"Side delts", group:"Shoulders", sr:"3 × 12–15", t:5, q:"lateral+raise+machine+exercise"},
+  {n:"Cable lateral raise", mg:"Side delts", group:"Shoulders", sr:"3 × 12–15", t:5, q:"cable+lateral+raise+exercise"},
+  {n:"Front raise", mg:"Front delts", group:"Shoulders", sr:"3 × 12–15", t:4, q:"dumbbell+front+raise+exercise"},
+  {n:"Rear-delt fly machine", mg:"Rear delts", group:"Shoulders", sr:"3 × 12–15", t:5, q:"rear+delt+fly+machine+exercise"},
+  {n:"Face pull (cable)", mg:"Rear delts", group:"Shoulders", sr:"3 × 15", t:4, q:"cable+face+pull+exercise"},
+  {n:"Upright row", mg:"Delts/traps", group:"Shoulders", sr:"3 × 10–12", t:5, q:"upright+row+exercise"},
+  {n:"Smith machine shoulder press", mg:"Delts", group:"Shoulders", sr:"3 × 8–12", t:7, q:"smith+machine+shoulder+press+exercise"},
+  // Biceps
+  {n:"EZ-bar curl", mg:"Biceps", group:"Biceps", sr:"3 × 10–12", t:5, q:"ez+bar+curl+exercise"},
+  {n:"Barbell curl", mg:"Biceps", group:"Biceps", sr:"3 × 8–10", t:5, q:"barbell+curl+exercise"},
+  {n:"Dumbbell curl (alternating)", mg:"Biceps", group:"Biceps", sr:"3 × 10/arm", t:5, q:"alternating+dumbbell+curl+exercise"},
+  {n:"Hammer curl", mg:"Biceps/forearms", group:"Biceps", sr:"3 × 10/arm", t:5, q:"dumbbell+hammer+curl+exercise"},
+  {n:"Preacher curl machine", mg:"Biceps", group:"Biceps", sr:"3 × 10–12", t:5, q:"preacher+curl+machine+exercise"},
+  {n:"Cable curl", mg:"Biceps", group:"Biceps", sr:"3 × 12–15", t:4, q:"cable+bicep+curl+exercise"},
+  {n:"Concentration curl", mg:"Biceps", group:"Biceps", sr:"3 × 10/arm", t:5, q:"concentration+curl+exercise"},
+  {n:"Incline dumbbell curl", mg:"Biceps", group:"Biceps", sr:"3 × 10–12", t:5, q:"incline+dumbbell+curl+exercise"},
+  // Triceps
+  {n:"Tricep pushdown (straight bar)", mg:"Triceps", group:"Triceps", sr:"3 × 10–12", t:5, q:"tricep+pushdown+straight+bar+cable"},
+  {n:"Rope pushdown", mg:"Triceps", group:"Triceps", sr:"3 × 12–15", t:5, q:"rope+tricep+pushdown+exercise"},
+  {n:"Overhead cable extension", mg:"Triceps", group:"Triceps", sr:"3 × 12–15", t:5, q:"overhead+cable+tricep+extension+exercise"},
+  {n:"Overhead dumbbell extension", mg:"Triceps", group:"Triceps", sr:"3 × 10–12", t:5, q:"overhead+dumbbell+tricep+extension+exercise"},
+  {n:"Skull crushers (EZ-bar)", mg:"Triceps", group:"Triceps", sr:"3 × 10–12", t:6, q:"ez+bar+skull+crusher+exercise"},
+  {n:"Dip machine", mg:"Triceps/chest", group:"Triceps", sr:"3 × 10–12", t:6, q:"tricep+dip+machine+exercise"},
+  {n:"Bench dips", mg:"Triceps", group:"Triceps", sr:"3 × 12–15", t:4, q:"bench+dip+exercise"},
+  {n:"Close-grip bench press", mg:"Triceps/chest", group:"Triceps", sr:"3 × 8–10", t:7, q:"close+grip+bench+press+exercise"},
+  // Quads
+  {n:"Leg press", mg:"Quads/glutes", group:"Quads", sr:"3–4 × 10–12", t:9, q:"leg+press+machine+exercise"},
+  {n:"Hack squat machine", mg:"Quads", group:"Quads", sr:"3 × 10–12", t:8, q:"hack+squat+machine+exercise"},
+  {n:"Leg extension", mg:"Quads", group:"Quads", sr:"3 × 12–15", t:5, q:"leg+extension+machine+exercise"},
+  {n:"Barbell back squat", mg:"Quads/glutes", group:"Quads", sr:"3–4 × 6–10", t:10, q:"barbell+back+squat+exercise"},
+  {n:"Smith machine squat", mg:"Quads/glutes", group:"Quads", sr:"3 × 8–10", t:8, q:"smith+machine+squat+exercise"},
+  {n:"Bulgarian split squat", mg:"Quads/glutes", group:"Quads", sr:"2–3 × 10/leg", t:6, q:"bulgarian+split+squat+exercise"},
+  {n:"Walking lunge", mg:"Quads/glutes", group:"Quads", sr:"2–3 × 10/leg", t:6, q:"walking+lunge+exercise"},
+  {n:"Goblet squat", mg:"Quads/glutes", group:"Quads", sr:"3 × 12–15", t:5, q:"goblet+squat+exercise"},
+  // Hamstrings/Glutes
+  {n:"Seated leg curl", mg:"Hamstrings", group:"Hamstrings/Glutes", sr:"3 × 10–12", t:5, q:"seated+leg+curl+machine+exercise"},
+  {n:"Lying leg curl", mg:"Hamstrings", group:"Hamstrings/Glutes", sr:"3 × 10–12", t:5, q:"lying+leg+curl+machine+exercise"},
+  {n:"Romanian deadlift", mg:"Hams/glutes", group:"Hamstrings/Glutes", sr:"3 × 8–10", t:6, q:"romanian+deadlift+exercise"},
+  {n:"Hip thrust machine", mg:"Glutes", group:"Hamstrings/Glutes", sr:"3 × 10–12", t:6, q:"hip+thrust+machine+exercise"},
+  {n:"Glute kickback machine", mg:"Glutes", group:"Hamstrings/Glutes", sr:"3 × 12–15", t:5, q:"glute+kickback+machine+exercise"},
+  {n:"Cable pull-through", mg:"Hams/glutes", group:"Hamstrings/Glutes", sr:"3 × 12–15", t:5, q:"cable+pull+through+exercise"},
+  {n:"Glute bridge", mg:"Glutes", group:"Hamstrings/Glutes", sr:"3 × 12–15", t:4, q:"glute+bridge+exercise"},
+  {n:"Good morning", mg:"Hamstrings", group:"Hamstrings/Glutes", sr:"3 × 10–12", t:6, q:"good+morning+exercise"},
+  // Calves
+  {n:"Standing calf raise machine", mg:"Calves", group:"Calves", sr:"3–4 × 12–20", t:5, q:"standing+calf+raise+machine"},
+  {n:"Seated calf raise machine", mg:"Calves", group:"Calves", sr:"3–4 × 12–20", t:5, q:"seated+calf+raise+machine+exercise"},
+  {n:"Leg press calf raise", mg:"Calves", group:"Calves", sr:"3 × 15–20", t:4, q:"leg+press+calf+raise+exercise"},
+  {n:"Donkey calf raise", mg:"Calves", group:"Calves", sr:"3 × 15–20", t:5, q:"donkey+calf+raise+exercise"},
+  // Core
+  {n:"Cable crunch", mg:"Abs", group:"Core", sr:"3 × 15–20", t:5, q:"cable+crunch+exercise"},
+  {n:"Ab crunch machine", mg:"Abs", group:"Core", sr:"3 × 15–20", t:5, q:"ab+crunch+machine+exercise"},
+  {n:"Hanging leg raise", mg:"Lower abs", group:"Core", sr:"3 × max reps", t:5, q:"hanging+leg+raise+exercise"},
+  {n:"Captain's chair leg raise", mg:"Lower abs", group:"Core", sr:"3 × 12–15", t:5, q:"captains+chair+leg+raise+exercise"},
+  {n:"Plank", mg:"Core", group:"Core", sr:"3 × 30–60s", t:4, q:"plank+exercise"},
+  {n:"Russian twist", mg:"Obliques", group:"Core", sr:"3 × 20", t:4, q:"russian+twist+exercise"},
+  {n:"Weighted sit-up", mg:"Abs", group:"Core", sr:"3 × 12–15", t:5, q:"weighted+sit+up+exercise"},
+  {n:"Ab rollout", mg:"Core", group:"Core", sr:"3 × 10–12", t:5, q:"ab+rollout+exercise"},
+  // Cardio
+  {n:"Treadmill", mg:"Cardio", group:"Cardio", sr:"15–20 min", t:18, q:"treadmill+workout"},
+  {n:"Elliptical", mg:"Cardio", group:"Cardio", sr:"15–20 min", t:18, q:"elliptical+workout"},
+  {n:"Stationary bike", mg:"Cardio", group:"Cardio", sr:"15–20 min", t:18, q:"stationary+bike+workout"},
+  {n:"Stairmaster", mg:"Cardio", group:"Cardio", sr:"10–15 min", t:13, q:"stairmaster+workout"},
+  {n:"Rowing machine", mg:"Cardio", group:"Cardio", sr:"10–15 min", t:13, q:"rowing+machine+workout"},
+  {n:"Assault bike", mg:"Cardio", group:"Cardio", sr:"10 min intervals", t:10, q:"assault+bike+workout"},
+];
+
+const SEED_DAYS = [
+  { name:"Push", ex:[
+    {n:"Incline chest press machine", mg:"Upper chest", sr:"3–4 × 8–12", t:8, q:"incline+chest+press+machine+exercise"},
+    {n:"Cable fly (mid)", mg:"Mid chest", sr:"3 × 12–15", t:5, q:"cable+chest+fly+exercise"},
+    {n:"Cable lower chest fly (high-to-low)", mg:"Lower chest", sr:"3 × 12–15", t:5, q:"high+to+low+cable+fly+lower+chest"},
+    {n:"Arnold press", mg:"Front/side delts", sr:"3 × 8–10", t:6, q:"arnold+press+dumbbell+exercise"},
+    {n:"Lateral raise", mg:"Side delts", sr:"3 × 15", t:4, q:"dumbbell+lateral+raise+exercise"},
+    {n:"Tricep pushdown (cheater bar)", mg:"Triceps", sr:"3 × 10–12", t:5, q:"tricep+pushdown+straight+bar+cable"},
+    {n:"Rope pushdown", mg:"Triceps", sr:"3 × 12–15", t:5, q:"rope+tricep+pushdown+exercise"},
+  ]},
+  { name:"Pull", ex:[
+    {n:"Seated wide-grip cable pulldown", mg:"Lats/upper back", sr:"3–4 × 8–12", t:8, q:"wide+grip+lat+pulldown+exercise"},
+    {n:"Seated cable row (V-handle)", mg:"Mid back", sr:"3 × 10–12", t:6, q:"seated+cable+row+v+handle+exercise"},
+    {n:"Face pull / rear-delt fly", mg:"Rear delts", sr:"3 × 15", t:4, q:"cable+face+pull+exercise"},
+    {n:"EZ-bar curl (bent bar)", mg:"Biceps", sr:"3 × 10–12", t:5, q:"ez+bar+curl+exercise"},
+    {n:"Alternating hammer curls", mg:"Biceps/forearms", sr:"3 × 10/arm", t:5, q:"alternating+dumbbell+hammer+curl"},
+  ]},
+  { name:"Legs", ex:[
+    {n:"Leg press", mg:"Quads/glutes", sr:"3–4 × 10–12", t:9, q:"leg+press+machine+exercise"},
+    {n:"Leg extension", mg:"Quads", sr:"3 × 12–15", t:5, q:"leg+extension+machine+exercise"},
+    {n:"Seated / lying leg curl", mg:"Hamstrings", sr:"3 × 10–12", t:5, q:"seated+leg+curl+machine+exercise"},
+    {n:"Romanian deadlift", mg:"Hams/glutes", sr:"3 × 8–10", t:6, q:"romanian+deadlift+exercise"},
+    {n:"Walking lunge / Bulgarian split squat", mg:"Quads/glutes", sr:"2–3 × 10/leg", t:6, q:"bulgarian+split+squat+exercise"},
+    {n:"Calf raise", mg:"Calves", sr:"3–4 × 12–20", t:5, q:"standing+calf+raise+machine"},
+  ]},
+];
+
+function uid(prefix){ return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function seedState(){
+  return {
+    days: SEED_DAYS.map(d => ({
+      id: uid("d_"),
+      name: d.name,
+      exercises: d.ex.map(e => ({ id: uid("e_"), ...e })),
+    })),
+    checked: {},
+  };
+}
+
+// ---------- state: local (signed-out) vs cloud (signed-in) ----------
+let state = null;
+let activeDay = null;
+let currentUser = null;
+
+function loadLocalState(){
+  try{
+    const raw = localStorage.getItem(LOCAL_KEY);
+    if(!raw) return seedState();
+    const parsed = JSON.parse(raw);
+    if(!parsed.days || !parsed.days.length) return seedState();
+    if(!parsed.checked) parsed.checked = {};
+    return parsed;
+  }catch(e){
+    return seedState();
+  }
+}
+function saveLocalState(){ localStorage.setItem(LOCAL_KEY, JSON.stringify(state)); }
+
+async function fetchMe(){
+  try{
+    const res = await fetch("/api/me", { credentials: "same-origin" });
+    if(!res.ok) return null;
+    return await res.json();
+  }catch(e){ return null; }
+}
+let lastStateFetchIsNew = false;
+async function fetchState(){
+  try{
+    const res = await fetch("/api/state", { credentials: "same-origin" });
+    lastStateFetchIsNew = res.headers.get("X-New-Account") === "1";
+    if(!res.ok) return seedState();
+    return await res.json();
+  }catch(e){ return seedState(); }
+}
+function putState(){
+  fetch("/api/state", {
+    method: "PUT",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(state),
+  }).catch(()=>{});
+}
+function postHistory(dayName, exerciseName, weight, setsReps){
+  fetch("/api/history", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ entries: [{ day_name: dayName, exercise_name: exerciseName, weight, sets_reps: setsReps }] }),
+  }).catch(()=>{});
+}
+function logAllWeights(){
+  if(!currentUser) return;
+  const entries = [];
+  state.days.forEach(day => {
+    day.exercises.forEach(e => {
+      if(e.w) entries.push({ day_name: day.name, exercise_name: e.n, weight: e.w, sets_reps: e.sr });
+    });
+  });
+  if(!entries.length) return;
+  fetch("/api/history", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ entries }),
+  }).catch(()=>{});
+}
+
+function saveState(){
+  if(currentUser){ putState(); }
+  else { saveLocalState(); }
+}
+
+function getDay(id){ return state.days.find(d => d.id === id); }
+function isChecked(dayId, exId){ return (state.checked[dayId] || []).includes(exId); }
+function toggleChecked(dayId, exId){
+  const arr = state.checked[dayId] || (state.checked[dayId] = []);
+  const i = arr.indexOf(exId);
+  if(i === -1) arr.push(exId); else arr.splice(i, 1);
+  saveState();
+}
+
+function slugQuery(name){ return encodeURIComponent(name.trim()).replace(/%20/g, "+") + "+exercise"; }
+
+// ---------- auth widget ----------
+function hasLocalPlan(){
+  return !!(localStorage.getItem("workout2-state") || localStorage.getItem(LOCAL_KEY));
+}
+function renderAuthWidget(){
+  const el = document.getElementById("authWidget");
+  if(currentUser){
+    const local = hasLocalPlan();
+    el.innerHTML = `<span class="who">${currentUser.email}</span>` +
+      (local ? `<button id="importLocalBtn" title="Import the plan saved on this device">Import local</button>` : "") +
+      `<button id="signOutBtn">Sign out</button>`;
+    document.getElementById("signOutBtn").addEventListener("click", async () => {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+      location.reload();
+    });
+    if(local){
+      document.getElementById("importLocalBtn").addEventListener("click", manualImport);
+    }
+  }else{
+    el.innerHTML = `<div id="gsiBtn"></div>`;
+    renderGoogleButton();
+  }
+}
+function renderGoogleButton(attempt){
+  attempt = attempt || 0;
+  if(!window.google || !google.accounts || !google.accounts.id){
+    if(attempt > 40) return;
+    setTimeout(() => renderGoogleButton(attempt + 1), 250);
+    return;
+  }
+  google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse });
+  const target = document.getElementById("gsiBtn");
+  if(target) google.accounts.id.renderButton(target, { theme: "filled_black", size: "medium", text: "signin" });
+}
+async function handleCredentialResponse(resp){
+  const res = await fetch("/api/auth/google", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ credential: resp.credential }),
+  });
+  if(!res.ok) return;
+  currentUser = await res.json();
+  state = await fetchState();
+  activeDay = state.days[0].id;
+  renderAuthWidget();
+  render();
+  if(lastStateFetchIsNew) maybeOfferImport();
+}
+
+function showImportBar(raw, manual){
+  const bar = document.getElementById("importBar");
+  const label = bar.querySelector("span");
+  if(label){
+    label.textContent = manual
+      ? "Replace your cloud plan with the plan saved on this device?"
+      : "Found a workout plan saved on this device.";
+  }
+  bar.hidden = false;
+
+  // clone+replace to clear any listeners from a previous show
+  const importBtn = document.getElementById("importBtn");
+  const dismissBtn = document.getElementById("dismissImportBtn");
+  const freshImportBtn = importBtn.cloneNode(true);
+  importBtn.replaceWith(freshImportBtn);
+  const freshDismissBtn = dismissBtn.cloneNode(true);
+  dismissBtn.replaceWith(freshDismissBtn);
+
+  freshImportBtn.addEventListener("click", () => {
+    try{
+      const parsed = JSON.parse(raw);
+      if(parsed.days && parsed.days.length){
+        state = parsed;
+        activeDay = state.days[0].id;
+        saveState();
+        render();
+        logAllWeights();
+      }
+    }catch(e){}
+    bar.hidden = true;
+    sessionStorage.setItem("importDismissed", "1");
+  });
+  freshDismissBtn.addEventListener("click", () => {
+    bar.hidden = true;
+    sessionStorage.setItem("importDismissed", "1");
+    if(!manual) saveState();
+  });
+}
+
+function maybeOfferImport(){
+  if(!currentUser) return;
+  if(sessionStorage.getItem("importDismissed")) return;
+  const raw = localStorage.getItem("workout2-state") || localStorage.getItem(LOCAL_KEY);
+  if(!raw) return;
+  showImportBar(raw, false);
+}
+
+function manualImport(){
+  const raw = localStorage.getItem("workout2-state") || localStorage.getItem(LOCAL_KEY);
+  if(!raw){ alert("No local plan found on this device."); return; }
+  let parsed;
+  try{ parsed = JSON.parse(raw); }catch(e){ alert("Local plan data on this device looks corrupted — couldn't import."); return; }
+  if(!parsed.days || !parsed.days.length){ alert("Local plan on this device is empty — nothing to import."); return; }
+  const exCount = parsed.days.reduce((s, d) => s + d.exercises.length, 0);
+  const summary = parsed.days.map(d => `${d.name} (${d.exercises.length})`).join(", ");
+  const ok = confirm(
+    `Replace your cloud plan with the plan on this device?\n\n` +
+    `${parsed.days.length} days, ${exCount} exercises: ${summary}\n\n` +
+    `This can't be undone.`
+  );
+  if(!ok) return;
+  state = parsed;
+  activeDay = state.days[0].id;
+  saveState();
+  render();
+  logAllWeights();
+  sessionStorage.setItem("importDismissed", "1");
+  const wtCount = parsed.days.reduce((s, d) => s + d.exercises.filter(e => e.w).length, 0);
+  alert(`Imported: ${parsed.days.length} days, ${exCount} exercises, ${wtCount} weights logged to history.`);
+}
+
+// ---------- render ----------
+function render(){
+  renderTabs();
+  renderPanel();
+}
+
+function renderTabs(){
+  const tabs = document.getElementById("tabs");
+  tabs.innerHTML = "";
+  state.days.forEach((day, i) => {
+    const tab = document.createElement("button");
+    tab.className = "tab" + (day.id === activeDay ? " active" : "");
+    tab.innerHTML = `<span class="d">Day ${i+1}</span>${day.name}` +
+      (day.id === activeDay ? `<span class="x">✕</span>` : "");
+    tab.addEventListener("click", (ev) => {
+      if(ev.target.classList.contains("x")){
+        deleteDay(day.id);
+        return;
+      }
+      activeDay = day.id;
+      render();
+    });
+    tabs.appendChild(tab);
+  });
+  const add = document.createElement("button");
+  add.className = "tab add";
+  add.textContent = "+ Day";
+  add.addEventListener("click", openAddDayModal);
+  tabs.appendChild(add);
+}
+
+function renderPanel(){
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+  const day = getDay(activeDay);
+  if(!day) return;
+
+  const panel = document.createElement("div");
+  panel.className = "panel active";
+
+  if(day.exercises.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No exercises yet. Add one below.";
+    panel.appendChild(empty);
+  }
+
+  day.exercises.forEach((e, idx) => {
+    const done = isChecked(day.id, e.id);
+    const row = document.createElement("div");
+    row.className = "ex" + (done ? " done" : "");
+    row.innerHTML = `
+      <div class="chk">✓</div>
+      <div class="body">
+        <div class="name"><a href="https://www.google.com/search?q=${e.q}" target="_blank" rel="noopener">${e.n}</a></div>
+        <div class="meta">
+          <span class="mg">${e.mg}</span><span class="sr num">${e.sr}</span>
+          <span class="wtwrap"><span class="wtlabel">wt</span><input class="wt num" type="text" inputmode="decimal" placeholder="—" value="${e.w || ""}"><span class="wtunit">lb</span></span>
+        </div>
+      </div>
+      <div class="t">min<span class="n num">${e.t}</span></div>
+      <div class="rowbtns">
+        <button class="iconbtn up" title="Move up" ${idx === 0 ? "disabled" : ""}>▲</button>
+        <button class="iconbtn down" title="Move down" ${idx === day.exercises.length - 1 ? "disabled" : ""}>▼</button>
+        <button class="iconbtn copy" title="Copy to another day">⧉</button>
+        <button class="iconbtn danger remove" title="Remove">🗑</button>
+      </div>`;
+    row.addEventListener("click", (ev) => {
+      if(ev.target.tagName === "A" || ev.target.tagName === "INPUT" || ev.target.closest(".rowbtns")) return;
+      toggleChecked(day.id, e.id);
+      render();
+    });
+    const wtInput = row.querySelector(".wt");
+    wtInput.addEventListener("click", (ev) => ev.stopPropagation());
+    wtInput.addEventListener("input", (ev) => { e.w = ev.target.value; });
+    wtInput.addEventListener("blur", () => {
+      saveState();
+      if(currentUser && e.w) postHistory(day.name, e.n, e.w, e.sr);
+    });
+    row.querySelector(".up").addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      moveExercise(day, e.id, -1);
+    });
+    row.querySelector(".down").addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      moveExercise(day, e.id, 1);
+    });
+    row.querySelector(".copy").addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      openCopyModal(day.id, e.id);
+    });
+    row.querySelector(".remove").addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if(confirm(`Remove "${e.n}" from ${day.name}?`)){
+        day.exercises = day.exercises.filter(x => x.id !== e.id);
+        if(state.checked[day.id]) state.checked[day.id] = state.checked[day.id].filter(id => id !== e.id);
+        saveState();
+        render();
+      }
+    });
+    panel.appendChild(row);
+  });
+
+  const addBtn = document.createElement("button");
+  addBtn.className = "addex";
+  addBtn.textContent = "+ Add Exercise";
+  addBtn.addEventListener("click", () => openAddExerciseModal(day.id));
+  panel.appendChild(addBtn);
+
+  const total = day.exercises.reduce((s, e) => s + e.t, 0);
+  const remaining = day.exercises.filter(e => !isChecked(day.id, e.id)).reduce((s, e) => s + e.t, 0);
+  const foot = document.createElement("div");
+  foot.className = "foot";
+  foot.innerHTML = `
+    <span class="lbl">${day.name} total</span>
+    <span class="val num">~${total}<small> min · ${remaining} left</small></span>`;
+  panel.appendChild(foot);
+
+  const reset = document.createElement("button");
+  reset.className = "reset";
+  reset.textContent = "Reset checkmarks";
+  reset.addEventListener("click", () => {
+    state.checked[day.id] = [];
+    saveState();
+    render();
+  });
+  panel.appendChild(reset);
+
+  app.appendChild(panel);
+}
+
+function moveExercise(day, exId, dir){
+  const idx = day.exercises.findIndex(x => x.id === exId);
+  const newIdx = idx + dir;
+  if(idx === -1 || newIdx < 0 || newIdx >= day.exercises.length) return;
+  const [item] = day.exercises.splice(idx, 1);
+  day.exercises.splice(newIdx, 0, item);
+  saveState();
+  render();
+}
+
+// ---------- day management ----------
+function deleteDay(dayId){
+  if(state.days.length <= 1){
+    alert("You need at least one day.");
+    return;
+  }
+  const day = getDay(dayId);
+  if(!confirm(`Delete the "${day.name}" day and all its exercises?`)) return;
+  state.days = state.days.filter(d => d.id !== dayId);
+  delete state.checked[dayId];
+  if(activeDay === dayId) activeDay = state.days[0].id;
+  saveState();
+  render();
+}
+
+// ---------- modal plumbing ----------
+const overlay = document.getElementById("overlay");
+const modalBody = document.getElementById("modalBody");
+function openModal(html){
+  modalBody.innerHTML = html;
+  overlay.classList.remove("hidden");
+}
+function closeModal(){
+  overlay.classList.add("hidden");
+  modalBody.innerHTML = "";
+}
+overlay.addEventListener("click", (ev) => { if(ev.target === overlay) closeModal(); });
+
+// ---------- add day modal ----------
+function openAddDayModal(){
+  openModal(`
+    <h2>Add a day</h2>
+    <label>Day name</label>
+    <input type="text" id="dayName" placeholder="e.g. Upper Body">
+    <div class="btnrow">
+      <button class="btn ghost" id="cancelDay">Cancel</button>
+      <button class="btn primary" id="createDay">Create</button>
+    </div>
+  `);
+  const input = document.getElementById("dayName");
+  input.focus();
+  document.getElementById("cancelDay").addEventListener("click", closeModal);
+  document.getElementById("createDay").addEventListener("click", () => {
+    const name = input.value.trim();
+    if(!name) return;
+    const day = { id: uid("d_"), name, exercises: [] };
+    state.days.push(day);
+    activeDay = day.id;
+    saveState();
+    closeModal();
+    render();
+  });
+  input.addEventListener("keydown", (ev) => { if(ev.key === "Enter") document.getElementById("createDay").click(); });
+}
+
+// ---------- add exercise modal ----------
+function openAddExerciseModal(dayId){
+  let filterGroup = "All";
+  let search = "";
+
+  openModal(`
+    <h2>Add exercise</h2>
+    <input type="text" id="exSearch" placeholder="Search exercises…">
+    <div class="chips" id="chips"></div>
+    <div class="cat-list" id="catList"></div>
+    <div class="toast" id="toast"></div>
+    <details class="custom-box">
+      <summary>Can't find it? Add a custom exercise</summary>
+      <label>Name</label>
+      <input type="text" id="cName" placeholder="e.g. Reverse pec deck">
+      <label>Muscle group</label>
+      <select id="cGroup">${GROUPS.map(g => `<option value="${g}">${g}</option>`).join("")}</select>
+      <label>Sets × reps</label>
+      <input type="text" id="cSr" placeholder="3 × 10–12" value="3 × 10–12">
+      <label>Minutes</label>
+      <input type="number" id="cMin" value="5" min="1" max="60">
+      <div class="btnrow">
+        <button class="btn primary" id="addCustom">Add Custom</button>
+      </div>
+    </details>
+    <div class="btnrow">
+      <button class="btn ghost" id="doneAdding">Done</button>
+    </div>
+  `);
+
+  const chipsEl = document.getElementById("chips");
+  const listEl = document.getElementById("catList");
+  const toastEl = document.getElementById("toast");
+
+  function renderChips(){
+    chipsEl.innerHTML = "";
+    ["All", ...GROUPS].forEach(g => {
+      const chip = document.createElement("button");
+      chip.className = "chip" + (g === filterGroup ? " active" : "");
+      chip.textContent = g;
+      chip.addEventListener("click", () => { filterGroup = g; renderChips(); renderList(); });
+      chipsEl.appendChild(chip);
+    });
+  }
+
+  function renderList(){
+    const q = search.toLowerCase();
+    const items = EXERCISE_CATALOG.filter(item =>
+      (filterGroup === "All" || item.group === filterGroup) &&
+      (q === "" || item.n.toLowerCase().includes(q))
+    );
+    listEl.innerHTML = "";
+    if(items.length === 0){
+      listEl.innerHTML = `<div class="empty">No matches.</div>`;
+      return;
+    }
+    items.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "cat-item";
+      row.innerHTML = `
+        <div>
+          <div class="ci-name">${item.n}</div>
+          <div class="ci-mg">${item.mg} · ${item.sr} · ${item.t} min</div>
+        </div>
+        <div class="plus">+</div>`;
+      row.addEventListener("click", () => {
+        const day = getDay(dayId);
+        day.exercises.push({ id: uid("e_"), n: item.n, mg: item.mg, sr: item.sr, t: item.t, q: item.q });
+        saveState();
+        render();
+        toastEl.textContent = `Added: ${item.n}`;
+      });
+      listEl.appendChild(row);
+    });
+  }
+
+  document.getElementById("exSearch").addEventListener("input", (ev) => {
+    search = ev.target.value;
+    renderList();
+  });
+
+  document.getElementById("addCustom").addEventListener("click", () => {
+    const name = document.getElementById("cName").value.trim();
+    if(!name) return;
+    const mg = document.getElementById("cGroup").value;
+    const sr = document.getElementById("cSr").value.trim() || "3 × 10–12";
+    const t = Math.max(1, parseInt(document.getElementById("cMin").value, 10) || 5);
+    const day = getDay(dayId);
+    day.exercises.push({ id: uid("e_"), n: name, mg, sr, t, q: slugQuery(name) });
+    saveState();
+    render();
+    toastEl.textContent = `Added: ${name}`;
+    document.getElementById("cName").value = "";
+  });
+
+  document.getElementById("doneAdding").addEventListener("click", closeModal);
+
+  renderChips();
+  renderList();
+}
+
+// ---------- copy modal ----------
+function openCopyModal(dayId, exId){
+  const day = getDay(dayId);
+  const ex = day.exercises.find(e => e.id === exId);
+  const others = state.days.filter(d => d.id !== dayId);
+
+  if(others.length === 0){
+    openModal(`
+      <h2>Copy "${ex.n}"</h2>
+      <p style="color:var(--muted); font-size:13.5px;">Add another day first — there's nowhere else to copy this to yet.</p>
+      <div class="btnrow"><button class="btn ghost" id="closeCopy">Close</button></div>
+    `);
+    document.getElementById("closeCopy").addEventListener("click", closeModal);
+    return;
+  }
+
+  openModal(`
+    <h2>Copy "${ex.n}" to…</h2>
+    <div class="copylist" id="copylist">
+      ${others.map(d => `
+        <label class="copyrow">
+          <input type="checkbox" value="${d.id}">
+          <span>${d.name}</span>
+        </label>`).join("")}
+    </div>
+    <div class="btnrow">
+      <button class="btn ghost" id="cancelCopy">Cancel</button>
+      <button class="btn primary" id="confirmCopy">Copy</button>
+    </div>
+  `);
+
+  document.getElementById("cancelCopy").addEventListener("click", closeModal);
+  document.getElementById("confirmCopy").addEventListener("click", () => {
+    const checked = [...document.querySelectorAll("#copylist input:checked")].map(el => el.value);
+    checked.forEach(targetId => {
+      const target = getDay(targetId);
+      target.exercises.push({ id: uid("e_"), n: ex.n, mg: ex.mg, sr: ex.sr, t: ex.t, q: ex.q, w: ex.w });
+    });
+    if(checked.length){
+      saveState();
+      render();
+    }
+    closeModal();
+  });
+}
+
+// ---------- init ----------
+async function init(){
+  currentUser = await fetchMe();
+  if(currentUser){
+    state = await fetchState();
+  }else{
+    state = loadLocalState();
+  }
+  activeDay = state.days[0].id;
+  renderAuthWidget();
+  render();
+  if(currentUser && lastStateFetchIsNew) maybeOfferImport();
+}
+init();
+</script>
+</body>
+</html>
