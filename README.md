@@ -15,6 +15,7 @@ Joey's personal fitness/health toolkit. Static site, served by [SWAG](https://gi
 - `/workout/` — Push/Pull/Legs tracker (classic, read-only split)
 - `/labs/` — Dirt Cheap Labs bloodwork panels + pricing comparison
 - `/protocols/` — peptide dosing references and write-ups
+- `/shopping/` — supplies and gear lists (peptide shopping list)
 
 ---
 
@@ -124,3 +125,12 @@ Files are copied/edited directly on the host; no build step.
 - History chart never rendered by default (only appeared after manually
   picking an exercise from an empty-by-default dropdown); now auto-selects
   the most-logged exercise on page load.
+
+### 2026-08-15
+
+#### Added
+
+- **Shopping page** (`/shopping/`) — new category for gear/supply lists,
+  starting with the Peptide Shopping List (Amazon wishlist), moved off the
+  landing page and out to its own card-style page (same pattern as
+  `/protocols/`).
