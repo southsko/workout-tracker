@@ -71,7 +71,7 @@
   <div id="content" hidden>
     <div class="controls">
       <select id="exerciseFilter"></select>
-      <a class="btn primary" href="/api/export.csv" download>Export CSV</a>
+      <button class="btn primary" id="exportBtn">Export CSV</button>
     </div>
 
     <div class="chartwrap" id="chartWrap" hidden>
@@ -86,24 +86,36 @@
   </div>
 </main>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="drive-sync.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 let allRows = [];
 let chart = null;
 
-async function fetchMe(){
-  try{
-    const res = await fetch("/api/me", { credentials: "same-origin" });
-    if(!res.ok) return null;
-    return await res.json();
-  }catch(e){ return null; }
+async function seedHistoryFromMigrationOrDefault(){
+  const migration = await migrationSeed();
+  if(migration && Array.isArray(migration.history)) return migration.history;
+  return [];
 }
-async function fetchHistory(){
-  try{
-    const res = await fetch("/api/history", { credentials: "same-origin" });
-    if(!res.ok) return [];
-    return await res.json();
-  }catch(e){ return []; }
+function csvEscape(v){
+  const s = String(v == null ? "" : v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+function exportCsv(){
+  const header = ["date", "day", "exercise", "weight"];
+  const lines = [header.join(",")].concat(
+    allRows.map(r => [r.date, r.day_name, r.exercise_name, r.weight || ""].map(csvEscape).join(","))
+  );
+  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "workout-history.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 function populateExerciseFilter(rows){
@@ -181,9 +193,18 @@ function renderChart(rows, exerciseName){
   });
 }
 
-async function init(){
-  const user = await fetchMe();
+async function onAuthChanged(){
+  const user = driveUser();
   if(!user){
+    document.getElementById("gate").hidden = false;
+    document.getElementById("content").hidden = true;
+    return;
+  }
+  let rows;
+  try{
+    const res = await getJsonFile(HISTORY_FILE, seedHistoryFromMigrationOrDefault);
+    rows = res.data;
+  }catch(e){
     document.getElementById("gate").hidden = false;
     document.getElementById("content").hidden = true;
     return;
@@ -192,7 +213,7 @@ async function init(){
   document.getElementById("content").hidden = false;
   document.getElementById("whoami").textContent = user.email;
 
-  allRows = await fetchHistory();
+  allRows = rows;
   populateExerciseFilter(allRows);
 
   const defaultExercise = pickDefaultExercise(allRows);
@@ -209,8 +230,9 @@ async function init(){
     renderTable(val ? allRows.filter(r => r.exercise_name === val) : allRows);
     renderChart(allRows, val);
   });
+  document.getElementById("exportBtn").addEventListener("click", exportCsv);
 }
-init();
+initAuth(onAuthChanged);
 </script>
 </body>
 </html>

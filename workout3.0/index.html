@@ -149,7 +149,6 @@
 <body>
 <header>
   <div class="hdrtop">
-    <a class="back" href="/">← fit.sofaking.rocks</a>
     <div style="display:flex; align-items:center; gap:12px;">
       <a class="navlink" href="history.html">History →</a>
       <div class="authwidget" id="authWidget"></div>
@@ -175,8 +174,8 @@
 </div>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="drive-sync.js"></script>
 <script>
-const GOOGLE_CLIENT_ID = "119940097847-6qletrqqv3hvc1330b4m9doacrlb0g2e.apps.googleusercontent.com";
 const LOCAL_KEY = "workout3-state-local";
 
 const GROUPS = ["Chest","Back","Shoulders","Biceps","Triceps","Quads","Hamstrings/Glutes","Calves","Core","Cardio"];
@@ -338,58 +337,81 @@ function loadLocalState(){
 }
 function saveLocalState(){ localStorage.setItem(LOCAL_KEY, JSON.stringify(state)); }
 
-async function fetchMe(){
-  try{
-    const res = await fetch("/api/me", { credentials: "same-origin" });
-    if(!res.ok) return null;
-    return await res.json();
-  }catch(e){ return null; }
-}
+let stateFileId = null;
+let historyCache = null; // { fileId, data }
 let lastStateFetchIsNew = false;
-async function fetchState(){
-  try{
-    const res = await fetch("/api/state", { credentials: "same-origin" });
-    lastStateFetchIsNew = res.headers.get("X-New-Account") === "1";
-    if(!res.ok) return seedState();
-    return await res.json();
-  }catch(e){ return seedState(); }
+
+async function seedStateFromMigrationOrDefault(){
+  const migration = await migrationSeed();
+  if(migration && migration.state && migration.state.days && migration.state.days.length) return migration.state;
+  return seedState();
 }
-function putState(){
-  fetch("/api/state", {
-    method: "PUT",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(state),
-  }).catch(()=>{});
+async function seedHistoryFromMigrationOrDefault(){
+  const migration = await migrationSeed();
+  if(migration && Array.isArray(migration.history)) return migration.history;
+  return [];
+}
+
+async function loadCloudState(){
+  const res = await getJsonFile(STATE_FILE, seedStateFromMigrationOrDefault);
+  stateFileId = res.fileId;
+  lastStateFetchIsNew = res.isNew;
+  return res.data;
+}
+function saveCloudState(){
+  if(!stateFileId) return;
+  writeJsonFile(stateFileId, state).catch(()=>{});
+}
+async function loadHistory(){
+  const res = await getJsonFile(HISTORY_FILE, seedHistoryFromMigrationOrDefault);
+  historyCache = { fileId: res.fileId, data: res.data };
+  return historyCache.data;
+}
+function upsertHistoryEntries(entries){
+  if(!historyCache) return;
+  entries.forEach(entry => {
+    const date = entry.date || new Date().toISOString().slice(0, 10);
+    const idx = historyCache.data.findIndex(r => r.date === date && r.exercise_name === entry.exercise_name);
+    const row = { date, day_name: entry.day_name, exercise_name: entry.exercise_name, weight: entry.weight, sets_reps: entry.sets_reps };
+    if(idx === -1) historyCache.data.push(row); else historyCache.data[idx] = row;
+  });
+  writeJsonFile(historyCache.fileId, historyCache.data).catch(()=>{});
 }
 function postHistory(dayName, exerciseName, weight, setsReps){
-  fetch("/api/history", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entries: [{ day_name: dayName, exercise_name: exerciseName, weight, sets_reps: setsReps }] }),
-  }).catch(()=>{});
+  upsertHistoryEntries([{ day_name: dayName, exercise_name: exerciseName, weight, sets_reps: setsReps }]);
 }
 function logAllWeights(){
-  if(!currentUser) return;
+  if(!currentUser || !historyCache) return;
   const entries = [];
   state.days.forEach(day => {
     day.exercises.forEach(e => {
       if(e.w) entries.push({ day_name: day.name, exercise_name: e.n, weight: e.w, sets_reps: e.sr });
     });
   });
-  if(!entries.length) return;
-  fetch("/api/history", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entries }),
-  }).catch(()=>{});
+  if(entries.length) upsertHistoryEntries(entries);
 }
 
 function saveState(){
-  if(currentUser){ putState(); }
+  if(currentUser){ saveCloudState(); }
   else { saveLocalState(); }
+}
+
+async function resetCloudData(){
+  if(!currentUser) return;
+  const ok = confirm(
+    "Reset your cloud plan and history?\n\n" +
+    "If a migration-seed.json is present on the server it will be re-imported; " +
+    "otherwise you'll start blank. Your passphrase stays the same. This can't be undone."
+  );
+  if(!ok) return;
+  try{
+    if(stateFileId) await deleteFile(stateFileId);
+    if(historyCache && historyCache.fileId) await deleteFile(historyCache.fileId);
+  }catch(e){
+    alert("Reset failed: " + e.message);
+    return;
+  }
+  location.reload();
 }
 
 function getDay(id){ return state.days.find(d => d.id === id); }
@@ -410,47 +432,29 @@ function hasLocalPlan(){
 function renderAuthWidget(){
   const el = document.getElementById("authWidget");
   if(currentUser){
-    const local = hasLocalPlan();
-    el.innerHTML = `<span class="who">${currentUser.email}</span>` +
-      (local ? `<button id="importLocalBtn" title="Import the plan saved on this device">Import local</button>` : "") +
-      `<button id="signOutBtn">Sign out</button>`;
-    document.getElementById("signOutBtn").addEventListener("click", async () => {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
-      location.reload();
-    });
-    if(local){
-      document.getElementById("importLocalBtn").addEventListener("click", manualImport);
-    }
+    el.innerHTML = `<span class="who">${currentUser.email}</span><button id="acctBtn" title="Account">⋯</button>`;
+    document.getElementById("acctBtn").addEventListener("click", openAccountModal);
   }else{
-    el.innerHTML = `<div id="gsiBtn"></div>`;
-    renderGoogleButton();
+    el.innerHTML = `<button id="signInBtn">Sign in with Google</button>`;
+    document.getElementById("signInBtn").addEventListener("click", signIn);
   }
 }
-function renderGoogleButton(attempt){
-  attempt = attempt || 0;
-  if(!window.google || !google.accounts || !google.accounts.id){
-    if(attempt > 40) return;
-    setTimeout(() => renderGoogleButton(attempt + 1), 250);
-    return;
+function openAccountModal(){
+  const local = hasLocalPlan();
+  openModal(`
+    <h2>Account</h2>
+    <p style="color:var(--muted); font-size:13px; margin:0 0 14px;">${currentUser.email}</p>
+    <div class="btnrow" style="flex-direction:column;">
+      ${local ? `<button class="btn ghost" id="importLocalBtn">Import local plan</button>` : ""}
+      <button class="btn ghost" id="resetCloudBtn">Reset cloud data</button>
+      <button class="btn ghost" id="signOutBtn">Sign out</button>
+    </div>
+  `);
+  if(local){
+    document.getElementById("importLocalBtn").addEventListener("click", () => { closeModal(); manualImport(); });
   }
-  google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse });
-  const target = document.getElementById("gsiBtn");
-  if(target) google.accounts.id.renderButton(target, { theme: "filled_black", size: "medium", text: "signin" });
-}
-async function handleCredentialResponse(resp){
-  const res = await fetch("/api/auth/google", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ credential: resp.credential }),
-  });
-  if(!res.ok) return;
-  currentUser = await res.json();
-  state = await fetchState();
-  activeDay = state.days[0].id;
-  renderAuthWidget();
-  render();
-  if(lastStateFetchIsNew) maybeOfferImport();
+  document.getElementById("resetCloudBtn").addEventListener("click", () => { closeModal(); resetCloudData(); });
+  document.getElementById("signOutBtn").addEventListener("click", () => { closeModal(); signOut(() => location.reload()); });
 }
 
 function showImportBar(raw, manual){
@@ -868,10 +872,17 @@ function openCopyModal(dayId, exId){
 }
 
 // ---------- init ----------
-async function init(){
-  currentUser = await fetchMe();
+async function onAuthChanged(){
+  currentUser = driveUser();
   if(currentUser){
-    state = await fetchState();
+    try{
+      state = await loadCloudState();
+      await loadHistory();
+    }catch(e){
+      // passphrase entry cancelled, or a Drive error — fall back to signed-out view
+      currentUser = null;
+      state = loadLocalState();
+    }
   }else{
     state = loadLocalState();
   }
@@ -880,7 +891,7 @@ async function init(){
   render();
   if(currentUser && lastStateFetchIsNew) maybeOfferImport();
 }
-init();
+initAuth(onAuthChanged);
 </script>
 </body>
 </html>
