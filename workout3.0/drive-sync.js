@@ -210,12 +210,19 @@ async function unlockKey(){
       : prompt("Enter your passphrase to unlock your workout data:");
     if(pass === null) throw new Error("passphrase entry cancelled");
     if(!pass.trim()) continue;
-    const key = await deriveKey(pass, saltB64);
     if(firstTime){
+      const confirmPass = prompt("Confirm your passphrase:");
+      if(confirmPass === null) throw new Error("passphrase entry cancelled");
+      if(confirmPass !== pass){
+        alert("Those two didn't match — try again.");
+        continue;
+      }
+      const key = await deriveKey(pass, saltB64);
       await createFile(META_FILE, JSON.stringify({ salt: saltB64 }));
       await cacheKey(key);
       return key;
     }
+    const key = await deriveKey(pass, saltB64);
     if(await verifyKey(key)){
       await cacheKey(key);
       return key;
