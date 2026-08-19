@@ -63,9 +63,9 @@ and stable** — it's a one-time bootstrap file, not meant to live forever.
   `fit.sofaking.rocks.subdomain.conf` for this reason. **If any new shared
   `.js` file gets added to `/workout3.0/`, give it the same treatment** or
   edits will silently not take effect for visitors (`cf-cache-status: HIT`).
-  Cache-purge token is `REDACTED-CLOUDFLARE-TOKEN`
-  (cache_purge:edit scope only — can't create Cache Rules with it). Zone ID:
-  `9ad11b8de59b12d96108ab079cf9e2a7`.
+  The cache-purge API token (cache_purge:edit scope only — can't create Cache
+  Rules with it) is **not stored in this repo**, since it's public. Ask Joey
+  for it directly if a future edit needs a cache purge.
 - **`google.accounts.id` (ID-token/One Tap) and `google.accounts.oauth2`
   (token client) are different flows** — this migration uses the latter
   (needed for the Drive scope). The consent screen is heavier than the old
