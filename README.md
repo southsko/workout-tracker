@@ -1,21 +1,19 @@
-# fit.sofaking.rocks
+# fit.sofaking.rocks — Workout Tracker
 
-Joey's personal fitness/health toolkit. Static site, served by [SWAG](https://github.com/linuxserver/docker-swag)
-(nginx reverse proxy) on Unraid — no backend, no database. All app state
-(checkmarks, custom exercises, day/exercise edits) lives in the browser via
-`localStorage`.
+Joey's workout tracker. Static site, served by [SWAG](https://github.com/linuxserver/docker-swag)
+(nginx reverse proxy) on Unraid.
 
 **Pages:**
-- `/` — landing page, links to everything below
 - `/workout3.0/` — cloud-synced tracker: Google sign-in, weight history log,
   chart, CSV export (backend: [`fit-api`](https://github.com/southsko/fit-api))
 - `/workout3.0/history.html` — weight history table + Chart.js graph + export
 - `/workout2.0/` — editable tracker (local-only): add/remove exercises and
   days, reorder, copy exercises between days, per-exercise weight tracking
 - `/workout/` — Push/Pull/Legs tracker (classic, read-only split)
-- `/labs/` — Dirt Cheap Labs bloodwork panels + pricing comparison
-- `/protocols/` — peptide dosing references and write-ups
-- `/shopping/` — supplies and gear lists (peptide shopping list)
+
+All app state for `/workout/` and `/workout2.0/` lives in the browser via
+`localStorage`. `/workout3.0/` syncs to the `fit-api` backend when signed in,
+and falls back to `localStorage` when signed out.
 
 ---
 
@@ -23,14 +21,17 @@ Joey's personal fitness/health toolkit. Static site, served by [SWAG](https://gi
 
 Hosted at `/mnt/user/appdata/swag/fit.sofaking.rocks` on the Unraid box,
 bind-mounted into the `swag` container at `/config/fit.sofaking.rocks`. Site
-conf: `/config/nginx/proxy-confs/fit.sofaking.rocks.subdomain.conf` (serves
-the whole folder as root — new subfolders work with zero nginx changes).
+conf: `/config/nginx/proxy-confs/fit.sofaking.rocks.subdomain.conf`.
 
 ```
 git clone https://github.com/southsko/fit.sofaking.rocks.git
 ```
 
 Files are copied/edited directly on the host; no build step.
+
+Note: the live host directory also contains other pages for the same domain
+(landing page, labs, protocols, shopping) that are intentionally **not**
+tracked in this repo — this repo is scoped to the workout tracker only.
 
 ---
 
@@ -40,10 +41,6 @@ Files are copied/edited directly on the host; no build step.
 
 #### Added
 
-- **Site scaffolding** — new SWAG site-conf + vhost for `fit.sofaking.rocks`,
-  static folder root at `/mnt/user/appdata/swag/fit.sofaking.rocks`.
-- **Landing page** (`/`) — dark-theme index with card links, playful stats
-  row, and footer (copyright, medical disclaimer, contact).
 - **Workout Tracker (classic)** (`/workout/`) — Push/Pull/Legs split with
   tap-to-check sets, per-day time totals, `localStorage`-backed checkmarks
   (`ppl-done` key).
@@ -53,11 +50,6 @@ Files are copied/edited directly on the host; no build step.
   - Add/remove days, remove exercises, copy exercises between days
   - Pre-seeded with the classic tracker's Push/Pull/Legs data
   - State persisted under `workout2-state` in `localStorage`
-- **Lab Tests** (`/labs/`) — panel cards for Dirt Cheap Labs' "The Works"
-  (~$200, 53 markers) and "Hormone Essentials" ($80, 7 markers), plus an
-  "About Dirt Cheap Labs" write-up and a price comparison vs. a real Ulta
-  Wellness order.
-- **Peptide Shopping List** link on the landing page (Amazon wishlist).
 - **Per-exercise weight field** on Workout 2.0, with a `localStorage`
   migration to strip stale weight text that had leaked into exercise names.
 - **Exercise reordering** on Workout 2.0 — ▲/▼ buttons per row, persisted
@@ -67,9 +59,6 @@ Files are copied/edited directly on the host; no build step.
 
 #### Added
 
-- **Protocols page** (`/protocols/`) — dosing references: r/NTNPerformance
-  peptide cheat sheet, peptidedosages.com, researchdosing.com. Linked from
-  the landing page.
 - **GitHub repo** — published to `southsko/fit.sofaking.rocks` (private).
 
 ### 2026-08-14
@@ -97,10 +86,6 @@ Files are copied/edited directly on the host; no build step.
   FastAPI + SQLite, Docker container `fit-api` on the shared `proxy` network,
   reverse-proxied at `fit.sofaking.rocks/api/*` via a `location /api/` block
   added to `fit.sofaking.rocks.subdomain.conf`.
-- **Landing page** — consolidated the three workout-tracker cards into one
-  ("Workout Tracker 3.0" as the primary tap target), with a small
-  "Old versions: 2.0 · classic" line inside the same card instead of two
-  separate cards.
 
 #### Fixed
 
@@ -126,11 +111,11 @@ Files are copied/edited directly on the host; no build step.
   picking an exercise from an empty-by-default dropdown); now auto-selects
   the most-logged exercise on page load.
 
-### 2026-08-15
+### 2026-08-18
 
-#### Added
+#### Changed
 
-- **Shopping page** (`/shopping/`) — new category for gear/supply lists,
-  starting with the Peptide Shopping List (Amazon wishlist), moved off the
-  landing page and out to its own card-style page (same pattern as
-  `/protocols/`).
+- **Repo scope narrowed** — this repo now tracks only the workout tracker
+  (`/workout/`, `/workout2.0/`, `/workout3.0/`). The landing page, labs,
+  protocols, and shopping pages remain on the live host but are no longer
+  pushed to GitHub.
