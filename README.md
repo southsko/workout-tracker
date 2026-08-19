@@ -1,19 +1,21 @@
-# fit.sofaking.rocks — Workout Tracker
+# Workout Tracker
 
 Joey's workout tracker. Static site, served by [SWAG](https://github.com/linuxserver/docker-swag)
-(nginx reverse proxy) on Unraid.
+(nginx reverse proxy) on Unraid — no backend of any kind.
 
 **Pages:**
 - `/workout3.0/` — cloud-synced tracker: Google sign-in, weight history log,
-  chart, CSV export (backend: [`fit-api`](https://github.com/southsko/fit-api))
+  chart, CSV export. Synced directly to the signed-in user's own Google
+  Drive `appDataFolder`, end-to-end encrypted with a passphrase-derived key
+  before it ever leaves the browser — no server involved at all
 - `/workout3.0/history.html` — weight history table + Chart.js graph + export
 - `/workout2.0/` — editable tracker (local-only): add/remove exercises and
   days, reorder, copy exercises between days, per-exercise weight tracking
 - `/workout/` — Push/Pull/Legs tracker (classic, read-only split)
 
 All app state for `/workout/` and `/workout2.0/` lives in the browser via
-`localStorage`. `/workout3.0/` syncs to the `fit-api` backend when signed in,
-and falls back to `localStorage` when signed out.
+`localStorage`. `/workout3.0/` syncs to Google Drive when signed in, and
+falls back to `localStorage` when signed out.
 
 ---
 
@@ -24,7 +26,7 @@ bind-mounted into the `swag` container at `/config/fit.sofaking.rocks`. Site
 conf: `/config/nginx/proxy-confs/fit.sofaking.rocks.subdomain.conf`.
 
 ```
-git clone https://github.com/southsko/fit.sofaking.rocks.git
+git clone https://github.com/southsko/workout-tracker.git
 ```
 
 Files are copied/edited directly on the host; no build step.
@@ -119,3 +121,28 @@ tracked in this repo — this repo is scoped to the workout tracker only.
   (`/workout/`, `/workout2.0/`, `/workout3.0/`). The landing page, labs,
   protocols, and shopping pages remain on the live host but are no longer
   pushed to GitHub.
+
+### 2026-08-19
+
+#### Changed
+
+- **Moved off `fit-api` entirely — no backend of any kind now.**
+  `/workout3.0/` used to sync through a self-hosted FastAPI + SQLite
+  container. It now talks straight to the signed-in user's own Google Drive
+  `appDataFolder` from the browser (`workout3.0/drive-sync.js`), the same
+  shape as any other static page here. The `fit-api` container, its nginx
+  `/api/` proxy, and its GitHub repo are retired.
+- **Data is end-to-end encrypted.** Both the plan and the weight history are
+  AES-256-GCM encrypted with a passphrase-derived key before they ever leave
+  the browser, so Drive (and anyone holding only the OAuth token) sees
+  ciphertext only. First-time setup now asks for the passphrase twice and
+  rejects a mismatch, since a typo here is unrecoverable by design — there
+  is no reset path.
+- **Repo renamed and made public** — `southsko/fit.sofaking.rocks` is now
+  [`southsko/workout-tracker`](https://github.com/southsko/workout-tracker),
+  public. Old commit history was rewritten to remove a Cloudflare API token
+  that had been committed by accident (never reached GitHub before the
+  rewrite).
+- **Personal branding removed** — page titles across `/workout/`,
+  `/workout2.0/`, `/workout3.0/` no longer say "Joey," now that the repo is
+  public under its own name.
